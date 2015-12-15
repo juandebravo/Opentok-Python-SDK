@@ -56,10 +56,20 @@ class OpenTok(object):
     TOKEN_SENTINEL = 'T1=='
     """For internal use."""
 
-    def __init__(self, api_key, api_secret, api_url='https://api.opentok.com'):
+    def __build_proxy_value(self, proxy):
+        """
+        Creates an dictionary with one key, `https`, and value the formatted proxy URL
+        """
+        if proxy.startswith('https://'):
+            return {'https': proxy}
+        else:
+            return {'https': 'https://' + proxy}
+
+    def __init__(self, api_key, api_secret, api_url='https://api.opentok.com', proxy=None):
         self.api_key = str(api_key)
         self.api_secret = api_secret
         self.api_url = api_url
+        self.proxies = self.__build_proxy_value(proxy) if proxy else None
 
     def generate_token(self, session_id, role=Roles.publisher, expire_time=None, data=None):
         """
@@ -180,12 +190,12 @@ class OpenTok(object):
         :param String media_mode: Determines whether the session will transmit streams using the
              OpenTok Media Router (MediaMode.routed) or not (MediaMode.relayed). By default,
              the setting is MediaMode.relayed.
-             
+
              With the media_mode property set to MediaMode.relayed, the session
-             will attempt to transmit streams directly between clients. If clients cannot connect 
+             will attempt to transmit streams directly between clients. If clients cannot connect
              due to firewall restrictions, the session uses the OpenTok TURN server to relay
              audio-video streams.
-             
+
              The `OpenTok Media
              Router <https://tokbox.com/opentok/tutorials/create-session/#media-mode>`_
              provides the following benefits:
@@ -237,7 +247,7 @@ class OpenTok(object):
             options[u('location')] = location
 
         try:
-            response = requests.post(self.session_url(), data=options, headers=self.headers())
+            response = requests.post(self.session_url(), data=options, headers=self.headers(), proxies=self.proxies)
             response.encoding = 'utf-8'
 
             if response.status_code == 403:
@@ -325,7 +335,7 @@ class OpenTok(object):
                    'outputMode': output_mode.value
         }
 
-        response = requests.post(self.archive_url(), data=json.dumps(payload), headers=self.archive_headers())
+        response = requests.post(self.archive_url(), data=json.dumps(payload), headers=self.archive_headers(), proxies=self.proxies)
 
         if response.status_code < 300:
             return Archive(self, response.json())
@@ -351,7 +361,7 @@ class OpenTok(object):
 
         :rtype: The Archive object corresponding to the archive being stopped.
         """
-        response = requests.post(self.archive_url(archive_id) + '/stop', headers=self.archive_headers())
+        response = requests.post(self.archive_url(archive_id) + '/stop', headers=self.archive_headers(), proxies=self.proxies)
 
         if response.status_code < 300:
             return Archive(self, response.json())
@@ -374,7 +384,7 @@ class OpenTok(object):
 
         :param String archive_id: The archive ID of the archive to be deleted.
         """
-        response = requests.delete(self.archive_url(archive_id), headers=self.archive_headers())
+        response = requests.delete(self.archive_url(archive_id), headers=self.archive_headers(), proxies=self.proxies)
 
         if response.status_code < 300:
             pass
@@ -392,7 +402,7 @@ class OpenTok(object):
 
         :rtype: The Archive object.
         """
-        response = requests.get(self.archive_url(archive_id), headers=self.archive_headers())
+        response = requests.get(self.archive_url(archive_id), headers=self.archive_headers(), proxies=self.proxies)
 
         if response.status_code < 300:
             return Archive(self, response.json())
@@ -421,7 +431,7 @@ class OpenTok(object):
         if count is not None:
             params['count'] = count
 
-        response = requests.get(self.archive_url() + "?" + urlencode(params), headers=self.archive_headers())
+        response = requests.get(self.archive_url() + "?" + urlencode(params), headers=self.archive_headers(), proxies=self.proxies)
 
         if response.status_code < 300:
             return ArchiveList(self, response.json())
